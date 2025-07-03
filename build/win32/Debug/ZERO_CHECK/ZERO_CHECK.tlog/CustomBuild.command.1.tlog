@@ -1,0 +1,10 @@
+^C:\USERS\CORCO\DOCUMENTS\GITHUB\BINARY-HAMMER\BUILD\CMAKEFILES\3C089B493D5B9A91DB370476324A3C20\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SC:/Users/corco/Documents/GitHub/Binary-Hammer -BC:/Users/corco/Documents/GitHub/Binary-Hammer/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/corco/Documents/GitHub/Binary-Hammer/build/binaryhammer.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
