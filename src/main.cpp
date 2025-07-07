@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <GLFW/glfw3.h>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -12,6 +16,12 @@ static void glfw_error_callback(int error, const char* description)
 
 int main(int, char**)
 {
+#ifdef WIN32
+  HWND console = GetConsoleWindow();
+  FreeConsole();
+  CloseWindow(console);
+#endif
+
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit())
     return 1;
@@ -27,12 +37,11 @@ int main(int, char**)
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
 
-  IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO(); (void)io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-    
+
   ImGui::StyleColorsDark();
 
   ImGuiStyle& style = ImGui::GetStyle();
@@ -58,6 +67,13 @@ int main(int, char**)
     ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y));
     ImGui::Begin("hi", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
+    static bool should_render_text = false;
+    if (ImGui::Button("button", {200, 200}))
+      should_render_text = !should_render_text;
+
+    if (should_render_text)
+      ImGui::Text("hi im being rendered\n");
+
     ImGui::End();
 
     ImGui::Render();
@@ -76,6 +92,5 @@ int main(int, char**)
 
   glfwDestroyWindow(window);
   glfwTerminate();
-
   return 0;
 }
