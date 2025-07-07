@@ -1,9 +1,14 @@
 #include "../incl/imgui.h"
+#include "../incl/imgui_internal.h"
 #include "../incl/imgui_impl_glfw.h"
 #include "../incl/imgui_impl_opengl3.h"
 
-#include <stdio.h>
 #include <GLFW/glfw3.h>
+
+#include <cstdio>
+#include <string>
+#include <ctime>
+#include <vector>
 
 #ifdef WIN32
 #include <windows.h>
@@ -14,8 +19,27 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+std::string gen_random(const int len) {
+  static const char alphanum[] =
+    "0123456789"
+    //"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    //"abcdefghijklmnopqrstuvwxyz";
+    ;
+  std::string tmp_s;
+  tmp_s.reserve(len);
+
+  for (int i = 0; i < len; ++i) {
+    tmp_s += alphanum[rand() % (sizeof(alphanum) - 1)];
+  }
+
+  return tmp_s;
+}
+
+
 int main(int, char**)
 {
+  srand((unsigned)time(NULL));
+
 #ifdef WIN32
   HWND console = GetConsoleWindow();
   FreeConsole();
@@ -41,6 +65,8 @@ int main(int, char**)
   ImGuiIO& io = ImGui::GetIO(); (void)io;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  
 
   ImGui::StyleColorsDark();
 
@@ -62,18 +88,69 @@ int main(int, char**)
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-      
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y));
-    ImGui::Begin("hi", 0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
-    static bool should_render_text = false;
-    if (ImGui::Button("button", {200, 200}))
-      should_render_text = !should_render_text;
+    static bool docking_enabled = false;
+    if (!docking_enabled) {
+      ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+      docking_enabled = true;
+    }
 
-    if (should_render_text)
-      ImGui::Text("hi im being rendered\n");
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->Pos);
+    ImGui::SetNextWindowSize(viewport->Size);
+    ImGui::SetNextWindowViewport(viewport->ID);
 
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+    ImGui::Begin("MainDockspace", nullptr,
+      ImGuiWindowFlags_NoTitleBar |
+      ImGuiWindowFlags_NoCollapse |
+      ImGuiWindowFlags_NoResize |
+      ImGuiWindowFlags_NoMove |
+      ImGuiWindowFlags_NoBringToFrontOnFocus |
+      ImGuiWindowFlags_NoNavFocus |
+      ImGuiWindowFlags_NoBackground |
+      ImGuiWindowFlags_NoDocking);
+
+    ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
+    if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+      ImGui::DockBuilderRemoveNode(dockspace_id); // Clear any existing layout
+      ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+      ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
+
+      ImGuiID dock_left, dock_right;
+      ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, &dock_left, &dock_right);
+
+      ImGui::DockBuilderDockWindow("Function Explorer", dock_left);
+      ImGui::DockBuilderDockWindow("Disassembly", dock_right);
+      ImGui::DockBuilderFinish(dockspace_id);
+    }
+
+    ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+    ImGui::End();
+
+    ImGui::PopStyleVar(2);
+
+    ImGui::Begin("Function Explorer");
+    static bool gen_once = false;
+    static std::vector<std::string> functions;
+    static int index = 0;
+    if (!gen_once) {
+      for (int i = 0; i < 25; ++i)
+        functions.push_back("func_" + gen_random(4));
+      gen_once = true;
+    }
+
+    for (int idx = 0; idx < functions.size(); ++idx) {
+      if (ImGui::Selectable(functions[idx].c_str(), index == idx))
+        index = idx;
+    }
+    ImGui::End();
+
+    ImGui::Begin("Disassembly");
+    if (index >= 0 && index < functions.size())
+      ImGui::Text("Disassembling Function: %s", functions[index].c_str());
     ImGui::End();
 
     ImGui::Render();
