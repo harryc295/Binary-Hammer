@@ -3,7 +3,6 @@
 #endif
 
 #include "rendering/render.h"
-#include "binary/binary.h"
 
 int main(int, char**)
 {
@@ -11,8 +10,6 @@ int main(int, char**)
   printf("Fatal: Support for other operating systems has not been written yet, please check back soon!\n");
   return 0;
 #endif
-
-  Binary bin("C:\\test_binary.exe");
 
   render::create();
   while (render::render());

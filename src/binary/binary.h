@@ -5,8 +5,6 @@
 
 #include "../logger.h"
 
-Binary open_binary;
-
 class Binary
 {
 public:
@@ -52,3 +50,5 @@ private:
   bool init = false;
   std::vector<char> binary;
 };
+
+Binary open_binary;

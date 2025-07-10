@@ -3,12 +3,11 @@
 #include "../../incl/imgui_internal.h"
 #include "../../incl/imgui_impl_glfw.h"
 #include "../../incl/imgui_impl_opengl3.h"
-<<<<<<< Updated upstream
-=======
+#include "../../incl/ImGuiFileDialog/ImGuiFileDialog.h"
 
 #include "../binary/binary.h"
+#include "../console_handler.h"
 
->>>>>>> Stashed changes
 #include <cstdio>
 #include <string>
 #include <ctime>
@@ -82,9 +81,13 @@ bool render::render() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    static bool openfile_dialog = false;
+    float menubar_height = 0.0f;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open", "Ctrl+O")) {}
+          if (ImGui::MenuItem("Open", "Ctrl+O")) { openfile_dialog = true; }
             if (ImGui::MenuItem("Save", "Ctrl+S")) {}
             ImGui::Separator();
             if (ImGui::MenuItem("Exit", "Alt+F4")) glfwSetWindowShouldClose(window, true);
@@ -104,12 +107,19 @@ bool render::render() {
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
+        menubar_height = ImGui::GetFrameHeight();
     }
 
     static bool first_run = true;
     if (first_run) {
         ImGui::OpenPopup("Welcome");
         first_run = false;
+    }
+
+    // Prevention of late calls to OpenPopup which result in no windows being open
+    if (openfile_dialog) {
+      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".exe,.bin,.dll", ".");
+      openfile_dialog = false;
     }
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -120,7 +130,8 @@ bool render::render() {
         ImGui::Separator();
 
         if (ImGui::Button("Load File", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
+          ImGui::CloseCurrentPopup();
+          openfile_dialog = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("Exit", ImVec2(120, 0))) {
@@ -129,10 +140,19 @@ bool render::render() {
         ImGui::EndPopup();
     }
 
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", 0, ImVec2(600, 350), ImVec2(800, 600))) {
+      if (ImGuiFileDialog::Instance()->IsOk()) {
+        open_binary = Binary(ImGuiFileDialog::Instance()->GetFilePathName());
+      }
+      ImGuiFileDialog::Instance()->Close();
+    }
+    
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->Pos);
-    ImGui::SetNextWindowSize(viewport->Size);
+    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + menubar_height));
+    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - menubar_height));
     ImGui::SetNextWindowViewport(viewport->ID);
+
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -145,13 +165,14 @@ bool render::render() {
         ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoNavFocus |
         ImGuiWindowFlags_NoBackground |
-        ImGuiWindowFlags_NoDocking);
+        ImGuiWindowFlags_NoDocking
+    );
 
     ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
     if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
         ImGui::DockBuilderRemoveNode(dockspace_id);
         ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
-        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
+        ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2(viewport->Size.x, viewport->Size.y - menubar_height));
 
         ImGuiID dock_left, dock_right;
         ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, &dock_left, &dock_right);
@@ -160,14 +181,15 @@ bool render::render() {
         ImGui::DockBuilderSplitNode(dock_left, ImGuiDir_Up, 0.6f, &dock_left_top, &dock_left_bottom);
 
         ImGuiID dock_right_top, dock_right_bottom;
-        ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Up, 0.5f, &dock_right_top, &dock_right_bottom);
+        ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Up, 0.7f, &dock_right_top, &dock_right_bottom);
 
         ImGui::DockBuilderDockWindow("Function Explorer", dock_left_top);
         ImGui::DockBuilderDockWindow("Exports", dock_left_bottom);
         ImGui::DockBuilderDockWindow("Imports", dock_left_bottom);
         ImGui::DockBuilderDockWindow("Disassembly", dock_right_top);
-        ImGui::DockBuilderDockWindow("Hex View", dock_right_bottom);
-        ImGui::DockBuilderDockWindow("Pseudo Code", dock_right_bottom);
+        ImGui::DockBuilderDockWindow("Pseudo Code", dock_right_top);
+        ImGui::DockBuilderDockWindow("Hex View", dock_right_top);
+        ImGui::DockBuilderDockWindow("Console", dock_right_bottom);
         ImGui::DockBuilderFinish(dockspace_id);
     }
 
@@ -224,40 +246,110 @@ bool render::render() {
     ImGui::End();
 
     ImGui::Begin("Hex View");
-    static const unsigned char sample_data[64] = {
-        0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x8B, 0x45,
-        0x08, 0x83, 0xC0, 0x05, 0x8B, 0xE5, 0x5D, 0xC3,
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
-        0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x74,
-        0x24, 0x10, 0x57, 0x48, 0x83, 0xEC, 0x20, 0x48,
-        0x8B, 0xDA, 0x48, 0x8B, 0xF9, 0x48, 0x8B, 0xD1,
-        0x48, 0x8B, 0xCB, 0xE8, 0x00, 0x00, 0x00, 0x00,
-        0x48, 0x8B, 0x5C, 0x24, 0x30, 0x48, 0x8B, 0x74
-    };
-
-    ImGui::Text("Offset     00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F");
-    ImGui::Separator();
-
-    for (int row = 0; row < 4; ++row) {
-        ImGui::Text("%08X   ", row * 16);
-        for (int col = 0; col < 16; ++col) {
-            int idx = row * 16 + col;
-            if (idx < sizeof(sample_data)) {
-                ImGui::SameLine();
-                ImGui::Text("%02X ", sample_data[idx]);
-                if (col == 7) ImGui::SameLine();
-            }
+    
+    std::vector<char> bin = open_binary.get_binary();
+    if (!bin.empty()) {
+      /*
+      * Total 5 spaces
+      * Offset = 6 characters + 2 characters because the actual offset is displayed as 8 characters + 3 characters for spacing
+      */
+      ImGui::Text("Offset     ");
+      for (int col = 0x0; col <= 0x0F; ++col) {
+        if (col == 8) {
+          ImGui::SameLine();
+          ImGui::Text("  ");
         }
-    }
+
+        ImGui::SameLine();
+        ImGui::Text("%02X", col);
+      }
+
+      ImGui::SameLine();
+      ImGui::Text("   "); // 3 characters for spacing
+      ImGui::SameLine();
+      ImGui::Text("Text");
+
+      ImGui::Separator();
+
+      int extra_row = 0;
+      if (bin.size() % 16)
+        extra_row = 1;
+      int max_rows = bin.size() / 16 + extra_row;
+      for (int row = 0; row < max_rows; ++row) {
+        /*
+        * Total 3 spaces
+        * Offset is always 8 digits + 3 characters for spacing
+        */
+        ImGui::Text("%08X   ", row * 16);
+        std::string resolved = "";
+        int empty_columns = 0;
+        for (int col = 0; col < 16; ++col) {
+          int idx = row * 16 + col;
+          if (idx < bin.size()) {
+            if (idx == 8) {
+              ImGui::SameLine();
+              ImGui::Text("  ");
+            }
+
+            if (bin[idx] >= 0x20 && bin[idx] <= 0x7E)
+              resolved += bin[idx];
+            else
+              resolved += ".";
+
+            ImGui::SameLine();
+            ImGui::Text("%02X", bin[idx]);
+            if (col == 7) ImGui::SameLine();
+          }
+          else {
+            auto bak = style.Colors[ImGuiCol_Text];
+            style.Colors[ImGuiCol_Text] = ImColor(0.5f, 0.5f, 0.5f);
+            
+            for (int _ = 0; _ < 16 - col; ++_) {
+              ImGui::SameLine();
+              ImGui::Text("00");
+              resolved += '.';
+            }
+            style.Colors[ImGuiCol_Text] = bak;
+            break;
+          }
+        }
+        ImGui::SameLine();
+        ImGui::Text("   "); // 3 characters for spacing
+        ImGui::SameLine();
+        
+        auto bak = style.Colors[ImGuiCol_Text];
+        style.Colors[ImGuiCol_Text] = ImColor(0.5f, 0.5f, 0.5f);
+        ImGui::Text(resolved.c_str());
+        style.Colors[ImGuiCol_Text] = bak;
+      }
+    } else
+      ImGui::Text("The binary is empty.");
+
     ImGui::End();
 
     ImGui::Begin("Pseudo Code");
     if (index >= 0 && index < functions.size()) {
         ImGui::Text("int %s(int param) {", functions[index].c_str());
-        ImGui::Text("    int result = param + 5;");
+        ImGui::Text("    int result = param + %i;", index);
         ImGui::Text("    return result;");
         ImGui::Text("}");
     }
+    ImGui::End();
+
+    ImGui::Begin("Console", 0);
+   
+    static char buffer[1024]{};
+    if (ImGui::InputText("Input (prefix: \".\")", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+      handle_console_command(buffer);
+      for (char& c : buffer)
+        c = '\0';
+    }
+
+    ImGui::Separator();
+    for (std::pair<std::string, std::string> message : Logger::get()->get_logs()) {
+      ImGui::Text("[%s]: %s", message.first.c_str(), message.second.c_str());
+    }
+
     ImGui::End();
 
     ImGui::Render();

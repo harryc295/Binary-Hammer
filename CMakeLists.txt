@@ -15,6 +15,8 @@ set_target_properties(glfw PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${GLFW_INCLUDE_DIR}"
 )
 
+include_directories("incl/")
+
 find_package(OpenGL REQUIRED)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.hpp" "src/*.h" "src/*.c" "incl/*.h" "incl/*.cpp")

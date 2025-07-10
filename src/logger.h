@@ -1,6 +1,7 @@
 #include <string>
 #include <cstdio>
 #include <fstream>
+#include <vector>
 
 #include "singleton.h"
 
@@ -30,21 +31,40 @@ public:
       logfile.close();
   }
 
-  void log(std::string string, std::string author = "Generic", bool noio = false)
+  void log(std::string message, std::string author = "Generic", bool noio = false)
   {
     if (!logfile.is_open()
       && !open_logfile()) {
       if (!noio)
-        printf("[%s]: Unable send log, reason: Cannot open the logfile.\n");
+        printf("[%s]: Unable send log, reason: Cannot open the logfile.\n", author);
       return;
     }
 
     if (!noio)
-      printf("[%s]: %s\n", author.c_str(), string.c_str());
-    logfile << "[" << author << "]: " << string << "\n";
+      printf("[%s]: %s\n", author.c_str(), message.c_str());
+    logfile << "[" << author << "]: " << message << "\n";
+    logs.push_back({ author, message });
+  }
+
+  /*
+  * @returns: { { author, message }, ... }
+  */
+  std::vector<std::pair<std::string, std::string>> get_logs()
+  {
+    return this->logs;
+  }
+
+  /*
+  * Clears the in-memory commands, not the logs inside the logfile
+  */
+  void clear_logs()
+  {
+    logs = std::vector<std::pair<std::string, std::string>>(0);
   }
 
 private:
+  std::vector<std::pair<std::string, std::string>> logs; // format: author, message
+
   std::ofstream logfile;
   bool open_logfile()
   {
@@ -52,7 +72,7 @@ private:
       return true;
     
     logfile.open(std::string(
-        "C:\\Users\\panca\\Desktop\\binaryhammer.log"
+        "./binaryhammer.log"
       ));
 
     if (!logfile.is_open())
