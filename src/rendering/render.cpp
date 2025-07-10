@@ -3,6 +3,12 @@
 #include "../../incl/imgui_internal.h"
 #include "../../incl/imgui_impl_glfw.h"
 #include "../../incl/imgui_impl_opengl3.h"
+<<<<<<< Updated upstream
+=======
+
+#include "../binary/binary.h"
+
+>>>>>>> Stashed changes
 #include <cstdio>
 #include <string>
 #include <ctime>

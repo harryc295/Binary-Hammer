@@ -3,22 +3,19 @@
 #endif
 
 #include "rendering/render.h"
+#include "binary/binary.h"
 
 int main(int, char**)
 {
-#ifdef WIN32
-  HWND console = GetConsoleWindow();
-  FreeConsole();
-  CloseWindow(console);
+#ifndef _WIN32
+  printf("Fatal: Support for other operating systems has not been written yet, please check back soon!\n");
+  return 0;
 #endif
 
-  if (!render::create())
-    return 1;
-  while (render::render())
-  {
-    // while rendering
-  }
-  render::destroy();
+  Binary bin("C:\\test_binary.exe");
 
+  render::create();
+  while (render::render());
+  render::destroy();
   return 0;
 }
