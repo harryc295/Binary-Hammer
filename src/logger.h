@@ -26,9 +26,6 @@ public:
     char* date_time = asctime(local_time);
 
     log("Session ended at " + std::string(date_time), "Session Manager", true);
-
-    if (logfile.is_open())
-      logfile.close();
   }
 
   void log(std::string message, std::string author = "Generic", bool noio = false)
