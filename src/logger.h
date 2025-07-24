@@ -30,7 +30,7 @@ public:
 
   void log(std::string message, std::string author = "Generic", bool noio = false)
   {
-    if (!logfile.is_open()
+    if (!m_logfile.is_open()
       && !open_logfile()) {
       if (!noio)
         printf("[%s]: Unable send log, reason: Cannot open the logfile.\n", author);
@@ -39,8 +39,8 @@ public:
 
     if (!noio)
       printf("[%s]: %s\n", author.c_str(), message.c_str());
-    logfile << "[" << author << "]: " << message << "\n";
-    logs.push_back({ author, message });
+    m_logfile << "[" << author << "]: " << message << "\n";
+    m_logs.push_back({ author, message });
   }
 
   /*
@@ -48,7 +48,7 @@ public:
   */
   std::vector<std::pair<std::string, std::string>> get_logs()
   {
-    return this->logs;
+    return this->m_logs;
   }
 
   /*
@@ -56,23 +56,23 @@ public:
   */
   void clear_logs()
   {
-    logs = std::vector<std::pair<std::string, std::string>>(0);
+    m_logs = std::vector<std::pair<std::string, std::string>>(0);
   }
 
 private:
-  std::vector<std::pair<std::string, std::string>> logs; // format: author, message
+  std::vector<std::pair<std::string, std::string>> m_logs; // format: author, message
+  std::ofstream m_logfile;
 
-  std::ofstream logfile;
   bool open_logfile()
   {
-    if (logfile.is_open())
+    if (m_logfile.is_open())
       return true;
     
-    logfile.open(std::string(
+    m_logfile.open(std::string(
         "./binaryhammer.log"
       ));
 
-    if (!logfile.is_open())
+    if (!m_logfile.is_open())
       return false;
   }
 };

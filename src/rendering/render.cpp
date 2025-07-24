@@ -247,7 +247,7 @@ bool render::render() {
 
     ImGui::Begin("Hex View");
     
-    std::vector<char> bin = open_binary.get_binary();
+    std::vector<char> bin = open_binary.get_binary(3, 2);
     if (!bin.empty()) {
       /*
       * Total 5 spaces
@@ -360,6 +360,7 @@ bool render::render() {
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(window);
+
 
     return true;
 }
