@@ -247,7 +247,7 @@ bool render::render() {
 
     ImGui::Begin("Hex View");
     
-    std::vector<char> bin = open_binary.get_binary(3, 2);
+    std::vector<char> bin = open_binary.get_binary(0, 11);
     if (!bin.empty()) {
       /*
       * Total 5 spaces

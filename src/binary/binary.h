@@ -43,12 +43,10 @@ public:
 
   std::vector<char> get_binary(size_t start, size_t size)
   {
-    size_t _end = size - start - 1;
-    if (start > m_binary.size() ||
-        _end > m_binary.size()
-      ) return {};
+    if (start + size > m_binary.size())
+      return {};
 
-    return std::vector<char>(m_binary.begin() + start, m_binary.end() - _end);
+    return std::vector<char>(m_binary.begin() + start, m_binary.begin() + size + start);
   }
 
   size_t get_binary_size()
