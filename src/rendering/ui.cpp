@@ -1,24 +1,16 @@
-#include "render.h"
-#include "../../incl/imgui.h"
-#include "../../incl/imgui_internal.h"
-#include "../../incl/imgui_impl_glfw.h"
-#include "../../incl/imgui_impl_opengl3.h"
-#include "../../incl/ImGuiFileDialog/ImGuiFileDialog.h"
-
-#include "../binary/binary.h"
-#include "../console_handler.h"
+#include "ui.h"
 
 #include <cstdio>
 #include <string>
 #include <ctime>
 #include <vector>
-#include <GLFW/glfw3.h>
 
-GLFWwindow* window;
 
-static void glfw_error_callback(int error, const char* description) {
-    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
-}
+
+#include "../../incl/ImGuiFileDialog/ImGuiFileDialog.h"
+
+#include "../binary/binary.h"
+#include "../console_handler.h"
 
 std::string gen_random(const int len) {
     static const char alphanum[] = "0123456789";
@@ -30,20 +22,21 @@ std::string gen_random(const int len) {
     return tmp_s;
 }
 
-bool render::create() {
+bool UI::create_window() {
     srand((unsigned)time(NULL));
     glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit()) return false;
+    if (!glfwInit())
+      return false;
 
-    const char* glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
-    window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "BinaryHammer", nullptr, nullptr);
-    if (!window) return false;
+    m_window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "BinaryHammer", nullptr, nullptr);
+    if (!m_window)
+      return false;
 
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
 
     ImGui::CreateContext();
@@ -55,24 +48,24 @@ bool render::create() {
     style.ScaleAllSizes(main_scale);
     style.FontScaleDpi = main_scale;
 
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
     return true;
 }
 
-void render::destroy() {
+void UI::destroy_window() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(m_window);
     glfwTerminate();
 }
 
-bool render::render() {
-    if (glfwWindowShouldClose(window)) return false;
+bool UI::render_frame() {
+    if (glfwWindowShouldClose(m_window)) return false;
 
     glfwPollEvents();
-    if (glfwGetWindowAttrib(window, GLFW_ICONIFIED)) {
+    if (glfwGetWindowAttrib(m_window, GLFW_ICONIFIED)) {
         ImGui_ImplGlfw_Sleep(10);
         return true;
     }
@@ -90,7 +83,7 @@ bool render::render() {
           if (ImGui::MenuItem("Open", "Ctrl+O")) { openfile_dialog = true; }
             if (ImGui::MenuItem("Save", "Ctrl+S")) {}
             ImGui::Separator();
-            if (ImGui::MenuItem("Exit", "Alt+F4")) glfwSetWindowShouldClose(window, true);
+            if (ImGui::MenuItem("Exit", "Alt+F4")) glfwSetWindowShouldClose(m_window, true);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
@@ -135,7 +128,7 @@ bool render::render() {
         }
         ImGui::SameLine();
         if (ImGui::Button("Exit", ImVec2(120, 0))) {
-            glfwSetWindowShouldClose(window, true);
+            glfwSetWindowShouldClose(m_window, true);
         }
         ImGui::EndPopup();
     }
@@ -153,7 +146,7 @@ bool render::render() {
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - menubar_height));
     ImGui::SetNextWindowViewport(viewport->ID);
 
-
+    
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
@@ -247,7 +240,7 @@ bool render::render() {
 
     ImGui::Begin("Hex View");
     
-    std::vector<char> bin = open_binary.get_binary(0, 11);
+    std::vector<unsigned char> bin = open_binary.get_data(0, 500);
     if (!bin.empty()) {
       /*
       * Total 5 spaces
@@ -271,10 +264,7 @@ bool render::render() {
 
       ImGui::Separator();
 
-      int extra_row = 0;
-      if (bin.size() % 16)
-        extra_row = 1;
-      int max_rows = bin.size() / 16 + extra_row;
+      int max_rows = bin.size() / 16 + std::ceil(bin.size() % 16);
       for (int row = 0; row < max_rows; ++row) {
         /*
         * Total 3 spaces
@@ -286,7 +276,7 @@ bool render::render() {
         for (int col = 0; col < 16; ++col) {
           int idx = row * 16 + col;
           if (idx < bin.size()) {
-            if (idx == 8) {
+            if (!(idx % 8) && (idx % 16)) {
               ImGui::SameLine();
               ImGui::Text("  ");
             }
@@ -297,7 +287,7 @@ bool render::render() {
               resolved += ".";
 
             ImGui::SameLine();
-            ImGui::Text("%02X", bin[idx]);
+            ImGui::Text("%02X", static_cast<unsigned char>(bin[idx]));
             if (col == 7) ImGui::SameLine();
           }
           else {
@@ -305,6 +295,11 @@ bool render::render() {
             style.Colors[ImGuiCol_Text] = ImColor(0.5f, 0.5f, 0.5f);
             
             for (int _ = 0; _ < 16 - col; ++_) {
+              if (!((_ + col) % 8) && ((_ + col) % 16)) {
+                ImGui::SameLine();
+                ImGui::Text("  ");
+              }
+
               ImGui::SameLine();
               ImGui::Text("00");
               resolved += '.';
@@ -346,20 +341,20 @@ bool render::render() {
     }
 
     ImGui::Separator();
-    for (std::pair<std::string, std::string> message : Logger::get()->get_logs()) {
-      ImGui::Text("[%s]: %s", message.first.c_str(), message.second.c_str());
+    for (log_t message : Logger::get()->get_logs()) {
+      ImGui::Text("[%s]: %s", message.owner.c_str(), message.message.c_str());
     }
 
     ImGui::End();
 
     ImGui::Render();
     int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glfwGetFramebufferSize(m_window, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
     glClearColor(0.08f, 0.08f, 0.09f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    glfwSwapBuffers(window);
+    glfwSwapBuffers(m_window);
 
 
     return true;

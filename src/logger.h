@@ -1,9 +1,18 @@
+#ifndef LOGGER_H_
+#define LOGGER_H_
+
 #include <string>
 #include <cstdio>
 #include <fstream>
 #include <vector>
 
 #include "singleton.h"
+
+struct log_t
+{
+  std::string message{};
+  std::string owner{};
+};
 
 class Logger: public singleton<Logger>
 {
@@ -40,13 +49,10 @@ public:
     if (!noio)
       printf("[%s]: %s\n", author.c_str(), message.c_str());
     m_logfile << "[" << author << "]: " << message << "\n";
-    m_logs.push_back({ author, message });
+    m_logs.push_back({ message, author });
   }
 
-  /*
-  * @returns: { { author, message }, ... }
-  */
-  std::vector<std::pair<std::string, std::string>> get_logs()
+  std::vector<log_t> get_logs()
   {
     return this->m_logs;
   }
@@ -56,11 +62,11 @@ public:
   */
   void clear_logs()
   {
-    m_logs = std::vector<std::pair<std::string, std::string>>(0);
+    m_logs = std::vector<log_t>(0);
   }
 
 private:
-  std::vector<std::pair<std::string, std::string>> m_logs; // format: author, message
+  std::vector<log_t> m_logs;
   std::ofstream m_logfile;
 
   bool open_logfile()
@@ -76,3 +82,5 @@ private:
       return false;
   }
 };
+
+#endif // !LOGGER_H_
