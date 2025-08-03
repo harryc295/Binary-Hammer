@@ -5,10 +5,7 @@
 #include <ctime>
 #include <vector>
 
-
-
-#include "../../incl/ImGuiFileDialog/ImGuiFileDialog.h"
-
+#include "file_prompt.h"
 #include "../binary/binary.h"
 #include "../console_handler.h"
 
@@ -109,10 +106,11 @@ bool UI::render_frame() {
         first_run = false;
     }
 
-    // Prevention of late calls to OpenPopup which result in no windows being open
-    if (openfile_dialog) {
-      ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".exe,.bin,.dll", ".");
+    if (openfile_dialog == true) {
       openfile_dialog = false;
+
+      std::string path = GetFileDialog();
+      open_binary = Binary(path);
     }
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -133,14 +131,8 @@ bool UI::render_frame() {
         ImGui::EndPopup();
     }
 
-    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", 0, ImVec2(600, 350), ImVec2(800, 600))) {
-      if (ImGuiFileDialog::Instance()->IsOk()) {
-        open_binary = Binary(ImGuiFileDialog::Instance()->GetFilePathName());
-      }
-      ImGuiFileDialog::Instance()->Close();
-    }
     
+
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + menubar_height));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - menubar_height));
@@ -207,12 +199,9 @@ bool UI::render_frame() {
     ImGui::End();
 
     ImGui::Begin("Exports");
-    static std::vector<std::string> exports = {
-        "ExitProcess", "MessageBoxA", "GetModuleHandleA",
-        "LoadLibraryA", "GetProcAddress", "FreeLibrary"
-    };
+    std::vector<resource_t> exports = open_binary.get_exports();
     for (const auto& exp : exports) {
-        ImGui::Text("%s", exp.c_str());
+        ImGui::Text("%s", exp.function);
     }
     ImGui::End();
 
@@ -239,38 +228,42 @@ bool UI::render_frame() {
     ImGui::End();
 
     ImGui::Begin("Hex View");
-    
-    std::vector<unsigned char> bin = open_binary.get_data(0, 500);
-    if (!bin.empty()) {
-      /*
-      * Total 5 spaces
-      * Offset = 6 characters + 2 characters because the actual offset is displayed as 8 characters + 3 characters for spacing
-      */
-      ImGui::Text("Offset     ");
-      for (int col = 0x0; col <= 0x0F; ++col) {
-        if (col == 8) {
-          ImGui::SameLine();
-          ImGui::Text("  ");
-        }
 
+    /*
+    * Total 5 spaces
+    * Offset = 6 characters + 2 characters because the actual offset is displayed as 8 characters + 3 characters for spacing
+    */
+    ImGui::Text("Offset     ");
+    for (int col = 0x0; col <= 0x0F; ++col) {
+      if (col == 8) {
         ImGui::SameLine();
-        ImGui::Text("%02X", col);
+        ImGui::Text("  ");
       }
 
       ImGui::SameLine();
-      ImGui::Text("   "); // 3 characters for spacing
-      ImGui::SameLine();
-      ImGui::Text("Text");
+      ImGui::Text("%02X", col);
+    }
 
-      ImGui::Separator();
+    ImGui::SameLine();
+    ImGui::Text("   "); // 3 characters for spacing
+    ImGui::SameLine();
+    ImGui::Text("Text");
+    ImGui::Separator();
 
-      int max_rows = bin.size() / 16 + std::ceil(bin.size() % 16);
+    ImGui::BeginChild("###HEXVIEW");
+    size_t entry_point = open_binary.get_entrypoint();
+    size_t start_section = entry_point - entry_point % 16;
+    
+    // experimental: temporary solution to not nuking the entire app by trying to render millions of bytes, this will get deprecated once lazy paging is implemented
+    std::vector<unsigned char> bin = open_binary.get_data(start_section, 16*10);
+    if (!bin.empty()) {
+      int max_rows = bin.size() / 16 + (bin.size() % 16 ? 1 : 0);
       for (int row = 0; row < max_rows; ++row) {
         /*
         * Total 3 spaces
         * Offset is always 8 digits + 3 characters for spacing
         */
-        ImGui::Text("%08X   ", row * 16);
+        ImGui::Text("%08X   ", row * 16 + start_section);
         std::string resolved = "";
         int empty_columns = 0;
         for (int col = 0; col < 16; ++col) {
@@ -281,13 +274,16 @@ bool UI::render_frame() {
               ImGui::Text("  ");
             }
 
-            if (bin[idx] >= 0x20 && bin[idx] <= 0x7E)
+            if (bin[idx] >= 0x20 && bin[idx] <= 0x7E && bin[idx] != 37)
               resolved += bin[idx];
             else
               resolved += ".";
 
             ImGui::SameLine();
-            ImGui::Text("%02X", static_cast<unsigned char>(bin[idx]));
+            if (idx + start_section == entry_point) {
+              ImGui::TextColored(ImColor(0.5f, 0.1f, 1.f), "%02X", static_cast<unsigned char>(bin[idx])); // experimental: making sure the entry point actually exists, shoutout AddressOfEntryPoint
+            } else
+              ImGui::Text("%02X", static_cast<unsigned char>(bin[idx]));
             if (col == 7) ImGui::SameLine();
           }
           else {
@@ -312,13 +308,12 @@ bool UI::render_frame() {
         ImGui::Text("   "); // 3 characters for spacing
         ImGui::SameLine();
         
-        auto bak = style.Colors[ImGuiCol_Text];
-        style.Colors[ImGuiCol_Text] = ImColor(0.5f, 0.5f, 0.5f);
-        ImGui::Text(resolved.c_str());
-        style.Colors[ImGuiCol_Text] = bak;
+        ImGui::TextColored(ImColor(0.5f, 0.5f, 0.5f), resolved.c_str());
       }
     } else
       ImGui::Text("The binary is empty.");
+
+    ImGui::EndChild();
 
     ImGui::End();
 
@@ -335,7 +330,7 @@ bool UI::render_frame() {
    
     static char buffer[1024]{};
     if (ImGui::InputText("Input (prefix: \".\")", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-      handle_console_command(buffer);
+      CommandHandler::get()->handle_command(buffer);
       for (char& c : buffer)
         c = '\0';
     }
@@ -355,7 +350,6 @@ bool UI::render_frame() {
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(m_window);
-
 
     return true;
 }

@@ -33,11 +33,11 @@ struct command_t
 // name - command
 std::map<std::string, command_t> commands = {
   {
-    "exit", 
+    "exit",
     {
       "Takes no arguments, exits BinaryHammer",
-      exit_callback
-    } 
+      exit_callback, {}
+    }
   },
   {
     "clear",
@@ -56,7 +56,7 @@ std::map<std::string, command_t> commands = {
   }
 };
 
-void handle_console_command(std::string input)
+void CommandHandler::handle_command(std::string input)
 {
   if (input.empty())
     return;
@@ -97,8 +97,8 @@ void handle_console_command(std::string input)
     }
 
     if (commands[command].callback) {
-      commands[command].callback();
-      return;
+        commands[command].callback();
+        return;
     }
 
     Logger::get()->log("Unknown command. Type \".help\" for help.", "Console");
