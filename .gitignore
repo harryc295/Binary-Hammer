@@ -10,12 +10,12 @@ Makefile
 cmake_install.cmake
 CMakeFiles/
 
-#app artifacts
+# app artifacts
 app
 binaryhammer.log
 config.json
 imgui.ini
 
-#vcpkg
+# vcpkg
 vcpkg-manifest-install.log
 vcpkg_installed/
