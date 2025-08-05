@@ -42,7 +42,7 @@ public:
     if (!m_logfile.is_open()
       && !open_logfile()) {
       if (!noio)
-        printf("[%s]: Unable send log, reason: Cannot open the logfile.\n", author);
+        printf("[%s]: Unable send log, reason: Cannot open the logfile.\n", author.c_str());
       return;
     }
 
@@ -77,9 +77,8 @@ private:
     m_logfile.open(std::string(
         "./binaryhammer.log"
       ));
-
-    if (!m_logfile.is_open())
-      return false;
+    
+    return m_logfile.is_open();
   }
 };
 

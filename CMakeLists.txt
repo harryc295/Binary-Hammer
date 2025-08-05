@@ -1,32 +1,54 @@
 cmake_minimum_required(VERSION 3.28)
-project(binaryhammer)
 
-set(GLFW_ROOT "C:/glfw3")
-set(GLFW_LIBRARY "${GLFW_ROOT}/lib-vc2022/glfw3.lib")
-set(GLFW_INCLUDE_DIR "${GLFW_ROOT}/include")
+set(CMAKE_TOOLCHAIN_FILE "/home/array/.local/share/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
-if(NOT EXISTS ${GLFW_LIBRARY})
-    message(FATAL_ERROR "GLFW library not found at ${GLFW_LIBRARY}")
-endif()
+project(binaryslammer)
 
-add_library(glfw STATIC IMPORTED)
-set_target_properties(glfw PROPERTIES
-    IMPORTED_LOCATION "${GLFW_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${GLFW_INCLUDE_DIR}"
-)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-include_directories("incl/")
-
+find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.hpp" "src/*.h" "src/*.c" "incl/*.h" "incl/*.cpp")
-add_executable(binaryhammer ${SOURCES})
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+set(CMAKE_BUILD_TYPE Debug)
 
-target_link_libraries(binaryhammer 
-    glfw
-    OpenGL::GL
+add_executable(app)
+
+file(GLOB_RECURSE app_SOURCES
+  "src/*.cpp"
+  "src/*.hpp"
+  "src/*.h"
+  "src/*.inl"
+
+  "incl/*.cpp"
+  "incl/*.hpp"
+  "incl/*.h"
+  "incl/*.inl"
 )
 
-if(WIN32)
-    target_compile_definitions(binaryhammer PRIVATE GLFW_STATIC)
+target_sources(app PRIVATE ${app_SOURCES})
+
+target_include_directories(app PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/incl
+)
+
+target_link_libraries(app PRIVATE
+  OpenGL::GL
+  glfw
+)
+
+if (MSVC)
+  target_compile_options(app PRIVATE
+    /W3
+    /MP
+    /WX
+    /ZI
+  )
+else()
+  target_compile_options(app PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+  )
 endif()

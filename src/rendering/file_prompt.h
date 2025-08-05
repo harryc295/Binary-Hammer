@@ -5,6 +5,10 @@
 #ifndef FILE_PROMPT_H
 #define FILE_PROMPT_H
 
+#include <string>
+
+#ifdef _WIN32
+
 #include <windows.h>
 #include <shobjidl.h> 
 
@@ -59,4 +63,12 @@ std::string GetFileDialog()
   return "";
 }
 
+#else 
+
+std::string GetFileDialog()
+{
+  return "/home/array/projects/binaryslammer/testing/win32_64bit_pe.exe";
+}
+
+#endif // !_WIN32
 #endif // !FILE_PROMPT_H

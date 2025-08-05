@@ -22,6 +22,7 @@ public:
       if (!create_config())
         return false;
     }
+    return true;
   }
 
   bool create_config()

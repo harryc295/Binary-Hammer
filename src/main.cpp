@@ -2,27 +2,23 @@
 #include <windows.h>
 #endif
 
-#include "rendering/ui.h"
-#include "logger.h"
 #include "config.h"
+#include "logger.h"
+#include "rendering/ui.h"
 
 #include <string>
-#include <iostream>
 
-int main(int, char**)
-{
-#ifndef _WIN32
-  Logger::get()->log("Fatal Error: Support for other operating systems has not been written yet, please check back soon!\n", "Main");
-  return 0;
-#endif
-
+int main(int, char **) {
+#ifdef _WIN32
+  // Close the console as we are using our own logger
   HWND console = GetConsoleWindow();
   FreeConsole();
   CloseWindow(console);
+#endif
 
-  UI* window_instance = UI::get();
-  Config* config_instance = Config::get();
-
+  UI *window_instance = UI::get();
+  Config *config_instance = Config::get();
+  
   if (!window_instance->create_window()) {
     Logger::get()->log("Error: Unable to create a window.", "Main");
     return 1;

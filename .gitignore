@@ -1,3 +1,21 @@
+# msvc artifacts
 build/*
 out/*
 .vs/*
+
+# cmake artifacts
+CMakeCache.txt
+CMakeSettings.json
+Makefile
+cmake_install.cmake
+CMakeFiles/
+
+#app artifacts
+app
+binaryhammer.log
+config.json
+imgui.ini
+
+#vcpkg
+vcpkg-manifest-install.log
+vcpkg_installed/
